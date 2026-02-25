@@ -1,6 +1,6 @@
 # Medical-Document-Processing-AI-Agent
 
-## Installing Next.js & Setting Up the Frontend
+## Setting Up the Frontend with Next.js
 #### Command
 ```
 npx create-next-app@latest my-app --yes
@@ -45,3 +45,13 @@ npm install react-dropzone
 #### UI - Documents Selected
 <img width="3840" height="1905" alt="upload-2" src="https://github.com/user-attachments/assets/80213c03-9030-4fc3-824e-7cd5e7fa632d" />
 
+## Installing Nest.js & Setting Up the Backend
+```
+npm install -g @nestjs/cli
+```
+
+```
+nest new my-nest-app
+cd my-nest-app
+npm run start:dev
+```
