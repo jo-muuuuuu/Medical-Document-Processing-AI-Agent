@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import type { Response } from 'express';
 import { MedicalDocumentsService } from './medical-documents.service';
 
@@ -6,14 +6,28 @@ import { MedicalDocumentsService } from './medical-documents.service';
 export class MedicalDocumentsController {
   constructor(private readonly service: MedicalDocumentsService) {}
 
-  @Get('download')
-  async download(
-    @Query('bucket') bucket: string,
-    @Query('path') path: string,
-    @Res({ passthrough: true }) res: Response,
+  @Post('process')
+  async processDocuments(
+    @Body()
+    body: {
+      documents: {
+        path: string;
+        mimeType: string;
+        originalName: string;
+      }[];
+    },
   ) {
-    const buffer = await this.service.getFile(bucket, path);
-    // res.send(buffer);
-    console.log(buffer);
+    if (!body.documents || body.documents.length === 0) {
+      return { status: 'no-documents' };
+    }
+
+    for (const doc of body.documents) {
+      await this.service.processOne(doc);
+    }
+
+    return {
+      status: 'processing-started',
+      count: body.documents.length,
+    };
   }
 }

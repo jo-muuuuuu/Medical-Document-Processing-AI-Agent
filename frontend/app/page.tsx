@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Uploader, { UploaderRef } from "@/components/Uploader";
-import { uploadDocumentToSupabase } from "../lib/supabase/uploadToSupabase";
+import { uploadDocumentsToSupabase } from "../lib/supabase/uploadToSupabase";
 
 export default function Home() {
   const [expanded, setExpanded] = useState(false);
@@ -13,7 +13,7 @@ export default function Home() {
   // Toggle display
   const handleFilesChange = (files: File[]) => {
     setQueueFiles(files);
-    setExpanded(true);
+    setExpanded(files.length > 0);
   };
 
   // Remove file from import queue
@@ -35,9 +35,9 @@ export default function Home() {
   // Upload files to supabase bucket
   const handleUploadAll = async () => {
     try {
-      for (const file of queueFiles) {
-        await uploadDocumentToSupabase(file, "0");
-      }
+      // for (const file of queueFiles) {
+      await uploadDocumentsToSupabase(queueFiles, "0");
+      // }
 
       alert("Upload successful");
       setQueueFiles([]);
@@ -135,21 +135,3 @@ export default function Home() {
     </div>
   );
 }
-
-// import { createClient } from "@/lib/supabase/server";
-// import { Suspense } from "react";
-
-// async function InstrumentsData() {
-//   const supabase = await createClient();
-//   const { data: instruments } = await supabase.from("instruments").select();
-
-//   return <pre>{JSON.stringify(instruments, null, 2)}</pre>;
-// }
-
-// export default function Instruments() {
-//   return (
-//     <Suspense fallback={<div>Loading instruments...</div>}>
-//       <InstrumentsData />
-//     </Suspense>
-//   );
-// }

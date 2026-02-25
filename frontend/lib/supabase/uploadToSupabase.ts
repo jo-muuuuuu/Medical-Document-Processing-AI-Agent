@@ -1,30 +1,48 @@
 import { createClient } from "./client";
 
-export async function uploadDocumentToSupabase(file: File, userId: string) {
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${crypto.randomUUID()}.${fileExt}`;
-  const filePath = `${userId}/${fileName}`;
+export async function uploadDocumentsToSupabase(files: File[], userId: string) {
+  const results = [];
 
-  // upload files to bucket
-  const { data, error } = await createClient()
-    .storage.from("medical-documents-bucket")
-    .upload(filePath, file, {
-      contentType: file.type,
-      upsert: false,
+  for (const file of files) {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+
+    // upload files to bucket
+    const { data, error } = await createClient()
+      .storage.from("medical-documents-bucket")
+      .upload(filePath, file);
+
+    if (error) throw error;
+
+    results.push({
+      path: data.path,
+      originalName: file.name,
+      mimeType: file.type,
     });
-
-  if (error) {
-    throw error;
   }
 
-  // console.log(data.path);
-  // const response = await fetch(
-  //   `http://localhost:3001/medical-documents/download?bucket=medical-documents-bucket&path=${data.path}`,
-  // );
+  handleUploads(results);
+  return results;
+}
 
-  return {
-    path: data.path,
-    originalName: file.name,
-    mimeType: file.type,
-  };
+async function handleUploads(uploadedDocs: Object[]) {
+  try {
+    const response = await fetch("http://localhost:3001/medical-documents/process", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ documents: uploadedDocs }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log("Backend response:", result);
+  } catch (err: any) {
+    console.error(err);
+  }
 }
