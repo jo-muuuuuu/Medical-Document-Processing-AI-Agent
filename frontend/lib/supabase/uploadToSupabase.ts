@@ -17,6 +17,11 @@ export async function uploadDocumentToSupabase(file: File, userId: string) {
     throw error;
   }
 
+  // console.log(data.path);
+  // const response = await fetch(
+  //   `http://localhost:3001/medical-documents/download?bucket=medical-documents-bucket&path=${data.path}`,
+  // );
+
   return {
     path: data.path,
     originalName: file.name,
