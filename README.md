@@ -55,3 +55,12 @@ nest new my-nest-app
 cd my-nest-app
 npm run start:dev
 ```
+
+## Using Azure Document Intelligence
+#### Create a Project
+<img width="3840" height="1896" alt="azure" src="https://github.com/user-attachments/assets/e6b4e6bc-50b2-41df-a934-978479de47dd" />
+
+#### Command
+```
+npm install @azure/ai-form-recognizer
+```
