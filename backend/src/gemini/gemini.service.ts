@@ -53,11 +53,11 @@ export class GeminiService {
       `;
 
       const result = await this.model.generateContent(prompt);
-      //   const response = result.response;
       const rawText = result.response.candidates[0].content.parts[0].text;
+      //   console.log(rawText);
 
-      //   console.log(result);
-      console.log(rawText);
+      // convert to JSON object
+      return JSON.parse(rawText.replace(/```json|```/g, '').trim());
     } catch (error) {
       console.error('[GEMINI ERROR]', error);
       console.error('[GEMINI ERROR RAW]', JSON.stringify(error, null, 2));
