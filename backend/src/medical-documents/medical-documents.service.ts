@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { AzureOcrService } from '../azure-ocr/azure-ocr.service';
 import { GeminiService } from '../gemini/gemini.service';
+import * as mammoth from 'mammoth';
 
 @Injectable()
 export class MedicalDocumentsService {
@@ -30,6 +31,12 @@ export class MedicalDocumentsService {
 
     if (doc.mimeType === 'application/pdf') {
       extractedText = await this.azureOcrService.extractText(buffer);
+    } else if (
+      doc.mimeType ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      const result = await mammoth.extractRawText({ buffer });
+      extractedText = result.value;
     } else {
       console.warn('Unsupported mimeType:', doc.mimeType);
       return;

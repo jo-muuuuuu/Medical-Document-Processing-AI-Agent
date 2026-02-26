@@ -22,8 +22,12 @@ export async function uploadDocumentsToSupabase(files: File[], userId: string) {
     });
   }
 
-  handleUploads(results);
-  return results;
+  const backendResult = await handleUploads(results);
+
+  return {
+    uploaded: results,
+    processed: backendResult,
+  };
 }
 
 async function handleUploads(uploadedDocs: Object[]) {
@@ -42,6 +46,7 @@ async function handleUploads(uploadedDocs: Object[]) {
 
     const result = await response.json();
     console.log("Backend response:", result);
+    return result;
   } catch (err: any) {
     console.error(err);
   }
