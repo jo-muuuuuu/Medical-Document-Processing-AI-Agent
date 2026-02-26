@@ -2,12 +2,14 @@ import { Inject, Injectable } from '@nestjs/common';
 // import { supabase } from '../lib/supabase.client';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AzureOcrService } from '../azure-ocr/azure-ocr.service';
+import { GeminiService } from '../gemini/gemini.service';
 
 @Injectable()
 export class MedicalDocumentsService {
   constructor(
     @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
     private readonly azureOcrService: AzureOcrService,
+    private readonly geminiService: GeminiService,
   ) {}
 
   // Process Documents
@@ -34,9 +36,13 @@ export class MedicalDocumentsService {
       return;
     }
 
-    // TODO: AI
-
     console.log('OCR text length:', extractedText.length);
+
+    // Gemini 2.5 Flash model
+    const samanthaResult =
+      await this.geminiService.analyzeMedicalText(extractedText);
+
+    console.log('[SAMANTHA] Extraction complete:', samanthaResult);
 
     // TODO: write into db
     return {
