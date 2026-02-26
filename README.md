@@ -64,3 +64,37 @@ npm run start:dev
 ```
 npm install @azure/ai-form-recognizer
 ```
+
+## Using Gemini 2.5 Flash
+#### Set up a GCP project & a service account
+<img width="3840" height="1908" alt="service-account" src="https://github.com/user-attachments/assets/17e2c568-72b2-4e26-a4cd-634e8e4bab64" />
+
+#### Command
+```
+npm install @google-cloud/vertexai
+
+npm install --save-dev @types/multer
+```
+
+## Write Into the Supabase DB
+#### Create `medical_documents` table
+```
+CREATE TABLE medical_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  file_url TEXT,
+  patient_name TEXT,
+  date_of_report DATE,
+  subject TEXT,
+  contact_of_source TEXT,
+  store_in TEXT CHECK (store_in IN ('Investigations', 'Correspondence')),
+  doctor_name TEXT,
+  category TEXT,
+  status TEXT DEFAULT 'pending_review',
+  raw_ocr_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+<img width="3840" height="1904" alt="write-supabase" src="https://github.com/user-attachments/assets/aebb3858-47e1-47d9-b95e-e48cd106518e" />
+
