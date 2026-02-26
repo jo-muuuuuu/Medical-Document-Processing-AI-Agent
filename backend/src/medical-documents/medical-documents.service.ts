@@ -1,13 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-// import { supabase } from '../lib/supabase.client';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseService } from 'src/supabase/supabase.service';
 import { AzureOcrService } from '../azure-ocr/azure-ocr.service';
 import { GeminiService } from '../gemini/gemini.service';
 
 @Injectable()
 export class MedicalDocumentsService {
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
+    private readonly supabaseService: SupabaseService,
     private readonly azureOcrService: AzureOcrService,
     private readonly geminiService: GeminiService,
   ) {}
@@ -18,10 +17,10 @@ export class MedicalDocumentsService {
     mimeType: string;
     originalName: string;
   }) {
-    console.log('[PROCESS]', doc.originalName);
+    // console.log('[PROCESS]', doc.originalName);
 
     // download files
-    const buffer = await this.downloadFromSupabase(
+    const buffer = await this.supabaseService.downloadFromSupabase(
       'medical-documents-bucket',
       doc.path,
     );
@@ -35,37 +34,38 @@ export class MedicalDocumentsService {
       console.warn('Unsupported mimeType:', doc.mimeType);
       return;
     }
-
-    console.log('OCR text length:', extractedText.length);
+    // console.log('OCR text length:', extractedText.length);
 
     // Gemini 2.5 Flash model
     const samanthaResult =
       await this.geminiService.analyzeMedicalText(extractedText);
+    // console.log('[SAMANTHA] Extraction complete:', samanthaResult);
 
-    console.log('[SAMANTHA] Extraction complete:', samanthaResult);
-
-    // TODO: write into db
-    return {
-      path: doc.path,
-      textLength: extractedText.length,
+    // Write into Supabase
+    const dbPayload = {
+      patient_name: samanthaResult.patientName,
+      date_of_report: samanthaResult.dateOfReport,
+      subject: samanthaResult.subject,
+      contact_of_source: samanthaResult.contactOfSource,
+      store_in: samanthaResult.storeIn,
+      doctor_name: samanthaResult.doctorName,
+      category: samanthaResult.category,
+      file_url: doc.path,
+      raw_ocr_text: extractedText,
+      status: 'pending_review',
     };
-  }
 
-  // Download files from Supabase Bucket
-  private async downloadFromSupabase(
-    bucket: string,
-    path: string,
-  ): Promise<Buffer> {
-    const { data, error } = await this.supabase.storage
-      .from(bucket)
-      .download(path);
+    const savedRecord = await this.supabaseService.writeIntoSupabase(
+      'medical_documents',
+      dbPayload,
+    );
 
-    if (error) {
-      console.error('Supabase download error:', error);
-      throw error;
-    }
+    // console.log('[DATABASE] Record saved with ID:', savedRecord.id);
 
-    const arrayBuffer = await data.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    return {
+      id: savedRecord.id,
+      path: doc.path,
+      extraction: samanthaResult,
+    };
   }
 }
