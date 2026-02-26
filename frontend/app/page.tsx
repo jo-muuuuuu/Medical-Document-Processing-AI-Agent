@@ -1,25 +1,47 @@
 "use client";
 
-import { useState, useRef } from "react";
-import Uploader, { UploaderRef } from "@/components/Uploader";
+import { useState } from "react";
+import Uploader from "@/components/Uploader";
+import FileList from "@/components/FileList";
 import { uploadDocumentsToSupabase } from "../lib/supabase/uploadToSupabase";
+import { fetchDocumentsInfo } from "@/lib/supabase/requestSupabase";
+import DocumentForm from "@/components/DocumentForm";
+import ConfirmUploadModal from "@/components/ConfirmUploadModal";
 
 export default function Home() {
   const [expanded, setExpanded] = useState(false);
   const [queueFiles, setQueueFiles] = useState<File[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const uploaderRef = useRef<UploaderRef>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Toggle display
+  const [importedDocs, setImportedDocs] = useState<any[]>([]);
+  const [selectedDocIndex, setSelectedDocIndex] = useState<number | null>(null);
+
   const handleFilesChange = (files: File[]) => {
-    setQueueFiles(files);
+    setQueueFiles((prev) => {
+      const allFiles = [...prev, ...files];
+
+      const uniqueFiles = Array.from(
+        new Map(allFiles.map((f) => [f.name + f.lastModified, f])).values(),
+      );
+
+      return uniqueFiles;
+    });
+
+    // Toggle display
     setExpanded(files.length > 0);
+
+    if (files.length > 0) {
+      setShowConfirmModal(true);
+    }
   };
 
   // Remove file from import queue
   const handleRemoveFile = (index: number) => {
     setQueueFiles((prev) => {
       const updated = prev.filter((_, i) => i !== index);
+
       if (updated.length === 0) {
         setExpanded(false);
       }
@@ -27,77 +49,70 @@ export default function Home() {
     });
   };
 
-  // trigger upload btn in right column
-  const handleAddDocumentsClick = () => {
-    uploaderRef.current?.openFileSelector();
-  };
-
-  // Upload files to supabase bucket
   const handleUploadAll = async () => {
     try {
-      // for (const file of queueFiles) {
-      await uploadDocumentsToSupabase(queueFiles, "0");
-      // }
+      setIsProcessing(true);
 
-      alert("Upload successful");
-      setQueueFiles([]);
-      setExpanded(false);
+      // Upload files to supabase bucket
+      const { uploaded } = await uploadDocumentsToSupabase(queueFiles, "0");
 
-      // clear files in Uploader
-      uploaderRef.current?.clearFiles();
+      // Get file path & fetch extracted text
+      const paths = uploaded.map((item) => item.path);
+      const infoMap = await fetchDocumentsInfo(paths);
+
+      // Merge upload data with extracted text
+      const newDocs = uploaded.map((item) => ({
+        path: item.path,
+        originalName: item.originalName,
+        info: infoMap.get(item.path) || null,
+      }));
+
+      setImportedDocs((prev) => {
+        const updated = [...prev, ...newDocs];
+        return updated;
+      });
+
+      // Select the last processed file
+      setSelectedDocIndex(importedDocs.length);
+
+      setShowConfirmModal(false);
+      setIsProcessing(false);
     } catch (err) {
       console.error(err);
       alert("Upload failed");
+      setIsProcessing(false);
+      setShowConfirmModal(false);
     }
+  };
+
+  const handleCancelUpload = () => {
+    setQueueFiles([]);
+    setExpanded(false);
+    setShowConfirmModal(false);
   };
 
   return (
     <div className="flex-1 grid grid-cols-24">
       {/* Left: Import Queue and Imported Documents */}
       <div className="col-span-8 text-center border-r border-blue-500">
-        <button
-          className="bg-blue-800 rounded text-white px-4 py-2 my-3"
-          style={{ width: "95%" }}
-          onClick={handleAddDocumentsClick}
-        >
-          {expanded ? "Add More Documents" : "Upload Documents"}
-        </button>
-
         {/* Import Queue Section */}
         <div className="h-[40vh] border-b border-gray-400 overflow-auto p-2">
           <h2 className="font-bold mb-2">Import Queue</h2>
           {queueFiles.length === 0 ? (
             <p className="text-sm text-gray-500">No files in queue</p>
           ) : (
-            <div>
-              <ul className="space-y-2 text-left text-sm">
-                {queueFiles.map((file, idx) => (
-                  <li
-                    key={idx}
-                    className="flex items-center justify-between border rounded px-2 py-1"
-                  >
-                    <span className="truncate">{file.name}</span>
-                    <button
-                      onClick={() => handleRemoveFile(idx)}
-                      className="ml-2 text-red-500 hover:text-red-700 text-xs"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={handleUploadAll}
-                className="mt-2 bg-green-600 text-white px-4 py-2 rounded w-full cursor-pointer"
-              >
-                Upload to System
-              </button>
-            </div>
+            <FileList
+              files={queueFiles}
+              showRemove
+              onRemove={handleRemoveFile}
+              onSelect={(idx) => setSelectedDocIndex(idx)}
+              selectedIndex={selectedDocIndex}
+            />
           )}
         </div>
 
         <div className="mt-3">
-          <h2 className="font-bold">Imported Documents</h2>
+          <h2 className="font-bold mb-2">Imported Documents</h2>
         </div>
       </div>
 
@@ -112,7 +127,7 @@ export default function Home() {
         <div className="w-full relative">
           {/* Uploader - always rendered for using the upload button in the left column*/}
           <div className={expanded ? "opacity-0 pointer-events-none" : ""}>
-            <Uploader ref={uploaderRef} onFilesChange={handleFilesChange} />
+            <Uploader onFilesChange={handleFilesChange} />
           </div>
 
           {/* PDF Viewer - overlays when expanded */}
@@ -128,8 +143,57 @@ export default function Home() {
       {/* No file in queue -> hidden */}
       {/* files uploaded -> Document Information  */}
       {expanded && (
-        <div className="col-span-8 text-center h-full border-l border-blue-500">
-          <h2 className="mt-2 font-bold">Document Information</h2>
+        <div className="col-span-8 text-center h-full border-l border-blue-500 px-2">
+          <h2 className="mt-2 font-bold text-center">Document Information</h2>
+
+          {selectedDocIndex === null ? (
+            <p className="text-sm text-gray-500">Select a document to view details</p>
+          ) : !importedDocs[selectedDocIndex] ? (
+            <p className="text-sm text-gray-500">Document not found</p>
+          ) : (
+            <div className="p-4 text-left">
+              <h3 className="font-semibold mb-2 text-center">
+                {importedDocs[selectedDocIndex].originalName}
+              </h3>
+
+              {importedDocs[selectedDocIndex].info ? (
+                <DocumentForm
+                  value={importedDocs[selectedDocIndex].info}
+                  onChange={(nextInfo) => {
+                    setImportedDocs((prev) => {
+                      const updated = [...prev];
+                      updated[selectedDocIndex] = {
+                        ...updated[selectedDocIndex],
+                        info: nextInfo,
+                      };
+                      return updated;
+                    });
+                  }}
+                />
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Document is still being processed…
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showConfirmModal && (
+        <ConfirmUploadModal
+          files={queueFiles}
+          handleCancelUpload={handleCancelUpload}
+          handleUploadAll={handleUploadAll}
+        />
+      )}
+
+      {isProcessing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+            <p className="mb-4 text-gray-700">Processing documents...</p>
+            <div className="w-8 h-8 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+          </div>
         </div>
       )}
     </div>

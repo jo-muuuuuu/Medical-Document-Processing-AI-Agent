@@ -1,24 +1,13 @@
 "use client";
 
-import { useCallback, useState, forwardRef, useImperativeHandle } from "react";
+import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 
 interface UploaderProps {
   onFilesChange?: (files: File[]) => void;
 }
 
-// Define ref type for exposing methods
-export interface UploaderRef {
-  openFileSelector: () => void;
-  clearFiles: () => void;
-}
-
-export default forwardRef<UploaderRef, UploaderProps>(function Uploader(
-  { onFilesChange },
-  ref,
-) {
-  const [files, setFiles] = useState<File[]>([]);
-
+export default function Uploader({ onFilesChange }: UploaderProps) {
   // Handle file drop/selection - filters for PDF and DOCX only
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -29,15 +18,12 @@ export default forwardRef<UploaderRef, UploaderProps>(function Uploader(
           file.type ===
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       );
-      const newFiles = [...files, ...allowedFiles];
-      setFiles(newFiles);
 
-      // Notify parent component of file changes if callback provided
-      if (onFilesChange) {
-        onFilesChange(newFiles);
+      if (onFilesChange && allowedFiles.length > 0) {
+        onFilesChange(allowedFiles);
       }
     },
-    [files, onFilesChange],
+    [onFilesChange],
   );
 
   // Configure react-dropzone hook
@@ -53,15 +39,6 @@ export default forwardRef<UploaderRef, UploaderProps>(function Uploader(
     noClick: true, // Disable click-to-open (we handle with custom button)
     noKeyboard: true, // Disable keyboard activation
   });
-
-  // Expose open method to parent component via ref
-  useImperativeHandle(ref, () => ({
-    openFileSelector: open,
-    clearFiles: () => {
-      setFiles([]);
-      onFilesChange?.([]);
-    },
-  }));
 
   return (
     <div className="p-4 w-full max-w-2xl mx-auto">
@@ -93,4 +70,4 @@ export default forwardRef<UploaderRef, UploaderProps>(function Uploader(
       </div>
     </div>
   );
-});
+}

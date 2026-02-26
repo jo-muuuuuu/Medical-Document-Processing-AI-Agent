@@ -2,6 +2,14 @@ import { Controller, Post, Body } from '@nestjs/common';
 import type { Response } from 'express';
 import { MedicalDocumentsService } from './medical-documents.service';
 
+interface ProcessResult {
+  success: boolean;
+  id?: string;
+  path: string;
+  extraction?: any;
+  error?: string;
+}
+
 @Controller('medical-documents')
 export class MedicalDocumentsController {
   constructor(private readonly service: MedicalDocumentsService) {}
@@ -21,13 +29,26 @@ export class MedicalDocumentsController {
       return { status: 'no-documents' };
     }
 
+    const results: ProcessResult[] = [];
+
     for (const doc of body.documents) {
-      await this.service.processOne(doc);
+      try {
+        const res = await this.service.processOne(doc);
+        results.push({ ...res, success: true, path: res?.path ?? doc.path });
+      } catch (err) {
+        console.error('Error processing document:', doc.originalName, err);
+        results.push({
+          success: false,
+          path: doc.path,
+          error: err.message || 'Unknown error',
+        });
+      }
     }
 
     return {
-      status: 'processing-started',
-      count: body.documents.length,
+      status: 'completed',
+      count: results.length,
+      results,
     };
   }
 }
