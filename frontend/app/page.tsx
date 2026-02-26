@@ -4,7 +4,7 @@ import { useState } from "react";
 import Uploader from "@/components/Uploader";
 import FileList from "@/components/FileList";
 import { uploadDocumentsToSupabase } from "../lib/supabase/uploadToSupabase";
-import { fetchDocumentsInfo } from "@/lib/supabase/requestSupabase";
+import { fetchDocumentsInfo, getPublicPdfUrl } from "@/lib/supabase/requestSupabase";
 import DocumentForm from "@/components/DocumentForm";
 import ConfirmUploadModal from "@/components/ConfirmUploadModal";
 import ImportedList from "@/components/ImportedList";
@@ -17,6 +17,7 @@ export default function Home() {
   const [importedDocs, setImportedDocs] = useState<any[]>([]);
   const [selectedDocIndex, setSelectedDocIndex] = useState<number | null>(null);
   const [importedListData, setImportedListData] = useState<any[]>([]);
+  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
 
   const handleFilesChange = (files: File[]) => {
     setQueueFiles((prev) => {
@@ -72,6 +73,11 @@ export default function Home() {
         return updated;
       });
 
+      if (uploaded.length > 0) {
+        const firstPath = uploaded[0].path;
+        setSelectedPdfUrl(getPublicPdfUrl(firstPath));
+      }
+
       // Select the last processed file
       setSelectedDocIndex(importedDocs.length);
 
@@ -98,6 +104,56 @@ export default function Home() {
     );
   };
 
+  const handleApprove = () => {
+    if (selectedDocIndex === null) return;
+
+    const doc = importedDocs[selectedDocIndex];
+    if (!doc?.info) return;
+
+    // add to imported list
+    const mockImport = {
+      patientName: doc.info.patient_name,
+      dateOfReport: doc.info.date_of_report,
+      subject: doc.info.subject,
+    };
+    setImportedListData((prev) => [...prev, mockImport]);
+
+    // remove approved doc
+    const updatedDocs = importedDocs.filter((_, index) => index !== selectedDocIndex);
+
+    setImportedDocs(updatedDocs);
+
+    // delete queue files
+    setQueueFiles((prev) => {
+      const updated = prev.filter((_, index) => index !== selectedDocIndex);
+      if (updated.length === 0) {
+        setExpanded(false);
+      }
+      return updated;
+    });
+
+    // choose the next file
+    if (updatedDocs.length > 0) {
+      const nextIndex =
+        selectedDocIndex >= updatedDocs.length
+          ? updatedDocs.length - 1
+          : selectedDocIndex;
+
+      setSelectedDocIndex(nextIndex);
+
+      const nextDoc = updatedDocs[nextIndex];
+      if (nextDoc?.path) {
+        const nextUrl = getPublicPdfUrl(nextDoc.path);
+        setSelectedPdfUrl(nextUrl);
+      }
+    } else {
+      // no remaining files
+      setSelectedDocIndex(null);
+      setSelectedPdfUrl(null);
+      setExpanded(false);
+    }
+  };
+
   return (
     <div className="flex-1 grid grid-cols-24">
       {/* Left: Import Queue and Imported Documents */}
@@ -112,7 +168,16 @@ export default function Home() {
               files={queueFiles}
               showRemove
               onRemove={handleRemoveFile}
-              onSelect={(idx) => setSelectedDocIndex(idx)}
+              // onSelect={(idx) => setSelectedDocIndex(idx)}
+              onSelect={(idx) => {
+                setSelectedDocIndex(idx);
+
+                const doc = importedDocs[idx];
+                if (doc?.path) {
+                  const url = getPublicPdfUrl(doc.path);
+                  setSelectedPdfUrl(url);
+                }
+              }}
               selectedIndex={selectedDocIndex}
               reviewIndices={importedDocs
                 .map((doc, idx) => (needsReview(doc.info) ? idx : -1))
@@ -148,16 +213,20 @@ export default function Home() {
           expanded ? "col-span-8" : "col-span-16"
         } flex justify-center items-center`}
       >
-        <div className="w-full relative">
+        <div className="w-full relative h-full">
           {/* Uploader - always rendered for using the upload button in the left column*/}
           <div className={expanded ? "opacity-0 pointer-events-none" : ""}>
             <Uploader onFilesChange={handleFilesChange} />
           </div>
 
           {/* PDF Viewer - overlays when expanded */}
-          {expanded && (
-            <div className="absolute inset-0 flex justify-center items-center">
-              PDF VIEW PLACEHOLDER
+
+          {expanded && selectedPdfUrl && (
+            <div className="absolute inset-0 bg-gray-100 p-4 h-full">
+              <iframe
+                src={selectedPdfUrl}
+                className="w-full h-full rounded-lg shadow-lg"
+              />
             </div>
           )}
         </div>
@@ -193,35 +262,7 @@ export default function Home() {
                       return updated;
                     });
                   }}
-                  onApprove={() => {
-                    if (selectedDocIndex === null) return;
-
-                    const doc = importedDocs[selectedDocIndex];
-                    if (!doc?.info) return;
-
-                    const mockImport = {
-                      patientName: doc.info.patient_name,
-                      dateOfReport: doc.info.date_of_report,
-                      subject: doc.info.subject,
-                    };
-                    setImportedListData((prev) => [...prev, mockImport]);
-
-                    setQueueFiles((prev) => {
-                      const updated = prev.filter(
-                        (_, index) => index !== selectedDocIndex,
-                      );
-                      if (updated.length === 0) {
-                        setExpanded(false);
-                      }
-                      return updated;
-                    });
-
-                    setImportedDocs((prevDocs) =>
-                      prevDocs.filter((_, index) => index !== selectedDocIndex),
-                    );
-
-                    setSelectedDocIndex(null);
-                  }}
+                  onApprove={handleApprove}
                 />
               ) : (
                 <p className="text-sm text-gray-500">

@@ -18,3 +18,11 @@ export async function fetchDocumentsInfo(paths: string[]): Promise<Map<string, a
   data?.forEach((doc) => map.set(doc.file_url, doc));
   return map;
 }
+
+export function getPublicPdfUrl(path: string) {
+  const { data } = createClient()
+    .storage.from("medical-documents-bucket")
+    .getPublicUrl(path);
+
+  return data.publicUrl;
+}
