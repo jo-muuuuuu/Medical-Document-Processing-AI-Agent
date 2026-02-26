@@ -33,18 +33,58 @@ export class GeminiService {
 
   async analyzeMedicalText(text: string) {
     try {
+      // const prompt = `
+      //   You are "Samantha", a specialized Medical Document Processing AI Agent.
+      //   Analyze the following OCR text extracted from a medical document and extract the 7 key properties.
+
+      //   - patientName
+      //   - dateOfReport (YYYY-MM-DD)
+      //   - subject (e.g., "Ultrasound of left foot")
+      //   - contactOfSource (The sending entity)
+      //   - storeIn (Select "Investigations" for diagnostic reports, "Correspondence" for letters)
+      //   - doctorName (The recipient GP)
+      //   - category (Choose from: [Admissions summary, Advance care planning, Allied health letter, Certificate, Clinical notes, Clinical photograph, Consent form, DAS21, Discharge summary, ECG, Email, Form, Immunisation, Indigenous PIP, Letter, Medical imaging report, MyHealth registration, New PT registration form, Pathology results, Patient consent, Record request, Referral letter, Workcover, Workcover consent])
+
+      //   # OCR text:
+      //   ${text}
+
+      //   Return ONLY a valid JSON object.
+      //   Do not include markdown, comments, or explanations.
+      // `;
+
       const prompt = `
-        You are "Samantha", a specialized Medical Document Processing AI Agent. 
+        You are "Samantha", a specialized Medical Document Processing AI Agent.
+
         Analyze the following OCR text extracted from a medical document and extract the 7 key properties.
 
+        IMPORTANT INSTRUCTION FOR doctorName:
+        - doctorName MUST be the recipient GP (the General Practitioner who receives the document).
+        - This is NOT the reporting doctor, specialist, radiologist, pathologist, or author of the document.
+        - Do NOT extract the doctor who performed or signed the report.
+        - Look for phrases such as:
+          - "Dear Dr ..."
+          - "To: Dr ..."
+          - "Referred to Dr ..."
+          - "Referring Doctor:"
+        - If multiple doctors are mentioned, choose the GP recipient.
+        - If no recipient GP is clearly stated, return null.
+
+        Extract the following fields:
+
         - patientName
-        - dateOfReport (YYYY-MM-DD)
+        - dateOfReport (format strictly as YYYY-MM-DD)
         - subject (e.g., "Ultrasound of left foot")
-        - contactOfSource (The sending entity)
-        - storeIn (Select "Investigations" for diagnostic reports, "Correspondence" for letters)
-        - doctorName (The recipient GP)
-        - category (Choose from: [Admissions summary, Advance care planning, Allied health letter, Certificate, Clinical notes, Clinical photograph, Consent form, DAS21, Discharge summary, ECG, Email, Form, Immunisation, Indigenous PIP, Letter, Medical imaging report, MyHealth registration, New PT registration form, Pathology results, Patient consent, Record request, Referral letter, Workcover, Workcover consent])
-        
+        - contactOfSource (The sending entity — hospital, imaging centre, pathology lab, specialist clinic, etc.)
+        - storeIn 
+            - Select "Investigations" for diagnostic reports (imaging, pathology, ECG, etc.)
+            - Select "Correspondence" for letters or communication documents
+        - doctorName (The recipient GP ONLY — not the reporting doctor / specialist)
+        - category (Choose strictly from:
+          [Admissions summary, Advance care planning, Allied health letter, Certificate, Clinical notes, Clinical photograph, Consent form, DAS21, Discharge summary, ECG, Email, Form, Immunisation, Indigenous PIP, Letter, Medical imaging report, MyHealth registration, New PT registration form, Pathology results, Patient consent, Record request, Referral letter, Workcover, Workcover consent]
+        )
+
+        If any field cannot be confidently determined, return null for that field.
+
         # OCR text:
         ${text}
 
