@@ -12,8 +12,8 @@ export default function ImportedList({
   subject,
 }: ImportedListProps) {
   return (
-    <div className="border rounded-lg p-4 shadow bg-white space-y-2">
-      <div className="text-sm">
+    <div className="border rounded-lg p-4 shadow bg-white space-y-2 mx-3">
+      <div className="text-sm ">
         <p>
           <span className="font-medium">Patient:</span> {patientName || "-"}
         </p>
