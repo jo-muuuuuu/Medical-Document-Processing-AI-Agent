@@ -7,16 +7,16 @@ import { uploadDocumentsToSupabase } from "../lib/supabase/uploadToSupabase";
 import { fetchDocumentsInfo } from "@/lib/supabase/requestSupabase";
 import DocumentForm from "@/components/DocumentForm";
 import ConfirmUploadModal from "@/components/ConfirmUploadModal";
+import ImportedList from "@/components/ImportedList";
 
 export default function Home() {
   const [expanded, setExpanded] = useState(false);
   const [queueFiles, setQueueFiles] = useState<File[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-
   const [isProcessing, setIsProcessing] = useState(false);
-
   const [importedDocs, setImportedDocs] = useState<any[]>([]);
   const [selectedDocIndex, setSelectedDocIndex] = useState<number | null>(null);
+  const [importedListData, setImportedListData] = useState<any[]>([]);
 
   const handleFilesChange = (files: File[]) => {
     setQueueFiles((prev) => {
@@ -91,6 +91,13 @@ export default function Home() {
     setShowConfirmModal(false);
   };
 
+  const needsReview = (docInfo: any) => {
+    if (!docInfo) return false;
+    return Object.values(docInfo).some(
+      (val) => val === "NULL" || val === "" || val === null,
+    );
+  };
+
   return (
     <div className="flex-1 grid grid-cols-24">
       {/* Left: Import Queue and Imported Documents */}
@@ -107,12 +114,29 @@ export default function Home() {
               onRemove={handleRemoveFile}
               onSelect={(idx) => setSelectedDocIndex(idx)}
               selectedIndex={selectedDocIndex}
+              reviewIndices={importedDocs
+                .map((doc, idx) => (needsReview(doc.info) ? idx : -1))
+                .filter((idx) => idx !== -1)}
             />
           )}
         </div>
 
         <div className="mt-3">
           <h2 className="font-bold mb-2">Imported Documents</h2>
+          {importedListData.length === 0 ? (
+            <p className="text-sm text-gray-500">No records imported</p>
+          ) : (
+            <div className="space-y-3">
+              {importedListData.map((item, index) => (
+                <ImportedList
+                  key={index}
+                  patientName={item.patientName}
+                  dateOfReport={item.dateOfReport}
+                  subject={item.subject}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -168,6 +192,35 @@ export default function Home() {
                       };
                       return updated;
                     });
+                  }}
+                  onApprove={() => {
+                    if (selectedDocIndex === null) return;
+
+                    const doc = importedDocs[selectedDocIndex];
+                    if (!doc?.info) return;
+
+                    const mockImport = {
+                      patientName: doc.info.patient_name,
+                      dateOfReport: doc.info.date_of_report,
+                      subject: doc.info.subject,
+                    };
+                    setImportedListData((prev) => [...prev, mockImport]);
+
+                    setQueueFiles((prev) => {
+                      const updated = prev.filter(
+                        (_, index) => index !== selectedDocIndex,
+                      );
+                      if (updated.length === 0) {
+                        setExpanded(false);
+                      }
+                      return updated;
+                    });
+
+                    setImportedDocs((prevDocs) =>
+                      prevDocs.filter((_, index) => index !== selectedDocIndex),
+                    );
+
+                    setSelectedDocIndex(null);
                   }}
                 />
               ) : (

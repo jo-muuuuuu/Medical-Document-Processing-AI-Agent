@@ -3,9 +3,10 @@
 interface DocumentFormProps {
   value: any;
   onChange: (nextValue: any) => void;
+  onApprove: () => void;
 }
 
-export default function DocumentForm({ value, onChange }: DocumentFormProps) {
+export default function DocumentForm({ value, onChange, onApprove }: DocumentFormProps) {
   if (!value) {
     return <p className="text-sm text-gray-500">No document data</p>;
   }
@@ -129,6 +130,7 @@ export default function DocumentForm({ value, onChange }: DocumentFormProps) {
         <button
           type="button"
           className="bg-green-600 rounded px-4 py-2 font-bold text-white mt-3 cursor-pointer"
+          onClick={onApprove}
         >
           Approve
         </button>
