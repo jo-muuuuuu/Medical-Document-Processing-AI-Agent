@@ -30,15 +30,41 @@ export async function uploadDocumentsToSupabase(files: File[], userId: string) {
   };
 }
 
+// async function handleUploads(uploadedDocs: Object[]) {
+//   try {
+//     const response = await fetch("http://localhost:3001/medical-documents/process", {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({ documents: uploadedDocs }),
+//     });
+
+//     if (!response.ok) {
+//       throw new Error(`Backend error: ${response.statusText}`);
+//     }
+
+//     const result = await response.json();
+//     console.log("Backend response:", result);
+//     return result;
+//   } catch (err: any) {
+//     console.error(err);
+//   }
+// }
+
 async function handleUploads(uploadedDocs: Object[]) {
   try {
-    const response = await fetch("http://localhost:3001/medical-documents/process", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    // const response = await fetch("http://localhost:3001/medical-documents/process", {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/medical-documents/process`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documents: uploadedDocs }),
       },
-      body: JSON.stringify({ documents: uploadedDocs }),
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`Backend error: ${response.statusText}`);
