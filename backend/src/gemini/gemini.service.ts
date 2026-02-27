@@ -7,22 +7,51 @@ export class GeminiService {
   private vertex: VertexAI;
   private model: any;
 
+  // constructor(private readonly configService: ConfigService) {
+  //   const samanthaProjectID = this.configService.get<string>(
+  //     'SAMANTHA_PROJECT_ID',
+  //   );
+
+  //   if (!samanthaProjectID) {
+  //     console.log('Samantha project ID missing');
+  //     throw new Error('Samantha project ID missing');
+  //   }
+
+  //   this.vertex = new VertexAI({
+  //     project: samanthaProjectID,
+  //     location: 'us-central1',
+  //   });
+
+  //   // create gemini 2.5 flash model
+  //   this.model = this.vertex.getGenerativeModel({
+  //     model: 'gemini-2.5-flash',
+  //     generationConfig: {
+  //       responseMimeType: 'application/json',
+  //     },
+  //   });
+  // }
+
   constructor(private readonly configService: ConfigService) {
-    const samanthaProjectID = this.configService.get<string>(
-      'SAMANTHA_PROJECT_ID',
+    const credentialsJson = this.configService.get<string>(
+      'GOOGLE_SERVICE_ACCOUNT_JSON',
     );
 
-    if (!samanthaProjectID) {
-      console.log('Samantha project ID missing');
-      throw new Error('Samantha project ID missing');
+    if (!credentialsJson) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON missing');
     }
 
+    const credentials = JSON.parse(credentialsJson);
+
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+
     this.vertex = new VertexAI({
-      project: samanthaProjectID,
+      project: credentials.project_id,
       location: 'us-central1',
+      googleAuthOptions: {
+        credentials,
+      },
     });
 
-    // create gemini 2.5 flash model
     this.model = this.vertex.getGenerativeModel({
       model: 'gemini-2.5-flash',
       generationConfig: {
@@ -33,25 +62,6 @@ export class GeminiService {
 
   async analyzeMedicalText(text: string) {
     try {
-      // const prompt = `
-      //   You are "Samantha", a specialized Medical Document Processing AI Agent.
-      //   Analyze the following OCR text extracted from a medical document and extract the 7 key properties.
-
-      //   - patientName
-      //   - dateOfReport (YYYY-MM-DD)
-      //   - subject (e.g., "Ultrasound of left foot")
-      //   - contactOfSource (The sending entity)
-      //   - storeIn (Select "Investigations" for diagnostic reports, "Correspondence" for letters)
-      //   - doctorName (The recipient GP)
-      //   - category (Choose from: [Admissions summary, Advance care planning, Allied health letter, Certificate, Clinical notes, Clinical photograph, Consent form, DAS21, Discharge summary, ECG, Email, Form, Immunisation, Indigenous PIP, Letter, Medical imaging report, MyHealth registration, New PT registration form, Pathology results, Patient consent, Record request, Referral letter, Workcover, Workcover consent])
-
-      //   # OCR text:
-      //   ${text}
-
-      //   Return ONLY a valid JSON object.
-      //   Do not include markdown, comments, or explanations.
-      // `;
-
       const prompt = `
         You are "Samantha", a specialized Medical Document Processing AI Agent.
 
