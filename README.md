@@ -98,3 +98,8 @@ CREATE TABLE medical_documents (
 
 <img width="3840" height="1904" alt="write-supabase" src="https://github.com/user-attachments/assets/aebb3858-47e1-47d9-b95e-e48cd106518e" />
 
+## Deployment & CI/CD
+#### Frontend - Vercel
+#### Backend - Railway
+`Vercel` is the recommended platform for Next.js project deployment, `Railway` was chosen for the MVP because it is lightweight and fast to set up. 
+They both support direct GitHub integration, root directory configuration, and automatic deployments with zero additional setup. Only environment variables are required.
